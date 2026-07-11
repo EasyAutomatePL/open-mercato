@@ -94,9 +94,7 @@ describe('updateRoleSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('accepts a null description so an existing description can be cleared', () => {
-    // The edit form sends `description: value?.trim() || null`; a null must be
-    // accepted so editing a role with an empty description does not 400.
+  it('accepts a null description sent by the edit form when the field is cleared', () => {
     const result = updateRoleSchema.safeParse({
       name: 'Editor',
       description: null,
