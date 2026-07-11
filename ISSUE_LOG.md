@@ -351,6 +351,7 @@ Add to the module scaffold skill and AGENTS.md:
 
 ## ISSUE-005: Customer role update fails with 400 when UI sends `name` for system roles
 
+**Status:** ✅ Resolved — the recommended fix (Option A) is present in `packages/core/src/modules/customer_accounts/api/admin/roles/[id].ts` (the guard compares `parsed.data.name !== role.name`, landed in commit `4d79a77c`). Regression coverage added in `api/admin/roles/__tests__/system-role-guard.test.ts`. The problem description below is retained for historical context.
 **Severity:** Medium
 **Affects:** Admin panel → Customer Accounts → Roles → Edit system role (e.g., `participant`)
 **Discovered:** 2026-03-22 during HackOn portal permission setup
@@ -414,5 +415,9 @@ The role edit page should only include fields that were actually modified. This 
 ### Recommendation
 
 **Option A** — 1-line change, zero risk, preserves the system role protection while fixing the false positive.
+
+### Resolution
+
+Option A shipped: `[id].ts` now guards with `role.isSystem && parsed.data.name !== undefined && parsed.data.name !== role.name`, so a system role can be saved as long as `name` is unchanged. Regression tests in `api/admin/roles/__tests__/system-role-guard.test.ts` cover: (1) updating a system role while echoing the unchanged `name`, (2) updating a system role with `name` omitted, (3) rejecting an actual name change with 400, and (4) renaming a non-system role.
 
 ---
