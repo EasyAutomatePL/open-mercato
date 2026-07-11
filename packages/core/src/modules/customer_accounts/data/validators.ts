@@ -61,14 +61,14 @@ export const passwordChangeSchema = z.object({
 export const createRoleSchema = z.object({
   name: z.string().min(1).max(255),
   slug: z.string().min(1).max(255).regex(/^[a-z0-9_-]+$/),
-  description: z.string().max(1000).optional(),
+  description: z.string().max(1000).nullish(),
   isDefault: z.boolean().optional(),
   customerAssignable: z.boolean().optional(),
 })
 
 export const updateRoleSchema = z.object({
   name: z.string().min(1).max(255).optional(),
-  description: z.string().max(1000).optional(),
+  description: z.string().max(1000).nullish(),
   isDefault: z.boolean().optional(),
   customerAssignable: z.boolean().optional(),
 })

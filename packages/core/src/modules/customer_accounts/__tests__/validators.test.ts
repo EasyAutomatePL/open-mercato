@@ -2,6 +2,7 @@ import {
   loginSchema,
   signupSchema,
   createRoleSchema,
+  updateRoleSchema,
   passwordChangeSchema,
 } from '../data/validators'
 
@@ -73,6 +74,34 @@ describe('createRoleSchema', () => {
       slug: 'Invalid Slug!',
     })
     expect(result.success).toBe(false)
+  })
+
+  it('accepts a null description (empty description on create)', () => {
+    const result = createRoleSchema.safeParse({
+      name: 'Editor',
+      slug: 'editor-role',
+      description: null,
+    })
+    expect(result.success).toBe(true)
+  })
+})
+
+describe('updateRoleSchema', () => {
+  it('accepts an update without a description', () => {
+    const result = updateRoleSchema.safeParse({
+      name: 'Editor',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a null description so an existing description can be cleared', () => {
+    // The edit form sends `description: value?.trim() || null`; a null must be
+    // accepted so editing a role with an empty description does not 400.
+    const result = updateRoleSchema.safeParse({
+      name: 'Editor',
+      description: null,
+    })
+    expect(result.success).toBe(true)
   })
 })
 
