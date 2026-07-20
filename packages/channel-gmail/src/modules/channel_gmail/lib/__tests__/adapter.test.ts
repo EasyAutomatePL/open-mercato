@@ -393,9 +393,8 @@ describe('GmailChannelAdapter OAuth flow', () => {
     ).rejects.toThrow(/requires_reauth/)
   })
 
-  // Spec A regression coverage — the new oauthClient path is the canonical
-  // production wiring; the legacy _client path remains for one minor
-  // release for backward compatibility.
+  // Spec A regression coverage — the OAuth client-app config comes only from
+  // the trusted `oauthClient` slot, never from the per-user credentials blob.
   describe('refreshCredentials — OAuth client wiring (Spec A)', () => {
     it('refreshes successfully when oauthClient is provided (no _client on credentials)', async () => {
       const refreshCalls: Array<{ clientId: string; clientSecret: string; refreshToken: string }> = []
@@ -425,34 +424,12 @@ describe('GmailChannelAdapter OAuth flow', () => {
       ])
     })
 
-    it('falls back to legacy _client path with a deprecation warning when oauthClient is absent', async () => {
-      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
-      try {
-        setGoogleOAuthClient(
-          stubOAuth({
-            refreshToken: async () => ({ access_token: 'a', expires_in: 1800, token_type: 'Bearer' }),
-          }),
-        )
-        await getGmailChannelAdapter().refreshCredentials!({
-          channelId: 'channel-1',
-          credentials: { ...userCredentials, _client: clientCredentials },
-          scope: { tenantId: 't', organizationId: 'o' },
-        })
-        // Legacy path emits a one-time deprecation warning per process.
-        expect(warn).toHaveBeenCalledWith(
-          expect.stringContaining('reading OAuth client config from credentials._client is deprecated'),
-        )
-      } finally {
-        warn.mockRestore()
-      }
-    })
-
-    it('throws a clear error when neither oauthClient nor _client carries client config', async () => {
+    it('throws a clear error when oauthClient is absent', async () => {
       setGoogleOAuthClient(stubOAuth({}))
       await expect(
         getGmailChannelAdapter().refreshCredentials!({
           channelId: 'channel-1',
-          credentials: userCredentials, // NO _client, NO oauthClient
+          credentials: userCredentials, // NO oauthClient
           scope: { tenantId: 't', organizationId: 'o' },
         }),
       ).rejects.toThrow(/Invalid Gmail OAuth client credentials/)
