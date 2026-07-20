@@ -213,10 +213,9 @@ class GmailChannelAdapter implements ChannelAdapter {
     if (!current.refreshToken) {
       throw new Error('requires_reauth')
     }
-    // Spec A: prefer the new `input.oauthClient` slot (resolved by the hub from
-    // the `channel_gmail` integration's tenant-scoped client credentials). Fall
-    // back to the deprecated `credentials._client` path for one minor release so
-    // existing test fixtures keep working.
+    // Spec A: the OAuth client config (clientId/clientSecret) comes from the
+    // trusted `input.oauthClient` slot, resolved by the hub from the
+    // `channel_gmail` integration's tenant-scoped client credentials.
     const clientFromState = resolveGmailOAuthClient(input)
     const token = await getGoogleOAuthClient().refreshToken({
       clientId: clientFromState.clientId,
@@ -672,47 +671,34 @@ function parseClientCredentialsOrThrow(value: unknown): GmailClientCredentials {
   return parsed.data
 }
 
-let warnedLegacyClientPath = false
-
 /**
- * Resolve the OAuth client config for a Gmail refresh, preferring the new
- * `RefreshCredentialsInput.oauthClient` field (Spec A,
- * .ai/specs/implemented/2026-05-27-email-integration-inbound-reliability-and-threading.md).
+ * Resolve the OAuth client config (clientId/clientSecret) for a Gmail refresh.
  *
- * Falls back to the deprecated `credentials._client` read path for one
- * minor release so existing tests keep working. The legacy path emits a
- * one-time deprecation warning per process so production logs stay quiet.
+ * The client-app config MUST originate from the trusted
+ * `RefreshCredentialsInput.oauthClient` slot, which the `communication_channels`
+ * hub resolves from the tenant-scoped `channel_gmail` integration row (Spec A,
+ * .ai/specs/implemented/2026-05-27-email-integration-inbound-reliability-and-threading.md).
+ * It never comes from the per-user credentials blob.
  */
 function resolveGmailOAuthClient(input: RefreshCredentialsInput): GmailClientCredentials {
-  if (input.oauthClient) {
-    const client = input.oauthClient
-    if (!client.clientId) {
-      throw new Error('[internal] Invalid Gmail OAuth client credentials: OAuth Client ID required')
-    }
-    if (!client.clientSecret) {
-      throw new Error('[internal] Invalid Gmail OAuth client credentials: clientSecret required')
-    }
-    return {
-      clientId: client.clientId,
-      clientSecret: client.clientSecret,
-      // `GmailClientCredentials.scopes` is the wire format the legacy
-      // `credentials._client` blob carried — comma/space-separated string.
-      // Spec A's `OAuthClientConfig.scopes` is the canonical `string[]`.
-      // `parseScopes` accepts either separator, so join with a single space.
-      ...(client.scopes !== undefined ? { scopes: client.scopes.join(' ') } : {}),
-    }
+  const client = input.oauthClient
+  if (!client) {
+    throw new Error('[internal] Invalid Gmail OAuth client credentials: oauthClient is required')
   }
-  // Legacy path — DEPRECATED. Remove in the next minor release.
-  if (!warnedLegacyClientPath) {
-    warnedLegacyClientPath = true
-    console.warn(
-      '[channel-gmail] reading OAuth client config from credentials._client is deprecated;' +
-        ' pass via RefreshCredentialsInput.oauthClient instead (Spec A).',
-    )
+  if (!client.clientId) {
+    throw new Error('[internal] Invalid Gmail OAuth client credentials: OAuth Client ID required')
   }
-  return parseClientCredentialsOrThrow(
-    (input.credentials as unknown as { _client?: unknown })._client ?? input.credentials,
-  )
+  if (!client.clientSecret) {
+    throw new Error('[internal] Invalid Gmail OAuth client credentials: clientSecret required')
+  }
+  return {
+    clientId: client.clientId,
+    clientSecret: client.clientSecret,
+    // Spec A's `OAuthClientConfig.scopes` is the canonical `string[]`;
+    // `GmailClientCredentials.scopes` is the comma/space-separated wire format
+    // `parseScopes` accepts, so join with a single space.
+    ...(client.scopes !== undefined ? { scopes: client.scopes.join(' ') } : {}),
+  }
 }
 
 function pickRawMimeBuffer(payload: { rawBase64Url?: unknown; rawBody?: unknown }): Buffer {
