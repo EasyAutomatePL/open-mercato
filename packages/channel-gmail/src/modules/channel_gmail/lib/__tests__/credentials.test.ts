@@ -48,6 +48,16 @@ describe('gmailUserCredentialsSchema', () => {
   it('rejects non-email email', () => {
     expect(() => gmailUserCredentialsSchema.parse({ accessToken: 'a', email: 'not-an-email' })).toThrow()
   })
+
+  it('rejects unknown keys so a smuggled _client cannot survive parse', () => {
+    expect(() =>
+      gmailUserCredentialsSchema.parse({
+        accessToken: 'a',
+        _client: { clientId: 'cid', clientSecret: 'secret' },
+      }),
+    ).toThrow()
+    expect(() => gmailUserCredentialsSchema.parse({ accessToken: 'a', unexpected: true })).toThrow()
+  })
 })
 
 describe('gmailChannelStateSchema', () => {

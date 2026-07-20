@@ -39,7 +39,11 @@ export const gmailUserCredentialsSchema = z
     /** Email address from the linked Google account. */
     email: z.string().email().optional(),
   })
-  .passthrough()
+  // `.strict()` rejects unknown keys so no extra field on the stored blob
+  // survives parse. In particular the client-app config must only ever come
+  // from the trusted, tenant-scoped `oauthClient` slot the hub supplies —
+  // never smuggled in here as a per-user `_client` key.
+  .strict()
 
 export type GmailUserCredentials = z.infer<typeof gmailUserCredentialsSchema>
 
