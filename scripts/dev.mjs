@@ -23,6 +23,7 @@ import {
   stripAnsi,
 } from './dev-splash-helpers.mjs'
 import { purgeAppBuildCaches } from './dev-cache-purge.mjs'
+import { checkFileWatchLimits } from './dev-inotify-check.mjs'
 import { killProcessTree } from './dev-shutdown-utils.mjs'
 import { resolveSpawnCommand } from './dev-spawn-utils.mjs'
 import { createDevSplashCodingFlow } from './dev-splash-coding-flow.mjs'
@@ -1758,6 +1759,7 @@ async function runClassicStandaloneDev() {
 
 async function main() {
   printDevLogLocation()
+  checkFileWatchLimits()
   await startSplashServer()
 
   if (!isMonorepo) {
